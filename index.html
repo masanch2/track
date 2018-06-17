@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<title>Track Stuff</title>
+
+	    <!-- Required meta tags -->
+	    <meta charset="utf-8">
+	    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+		<link rel="stylesheet" type="text/css" href="../css/bootstrap.min.css">
+
+		<link rel="stylesheet" type="text/css" href="css/default.css">
+
+		<!-- Google Analytics -->
+		<script async src="https://www.googletagmanager.com/gtag/js?id=UA-112757384-1"></script>
+		<script>
+		  window.dataLayer = window.dataLayer || [];
+		  function gtag(){dataLayer.push(arguments);}
+		  gtag('js', new Date());
+
+		  gtag('config', 'UA-112757384-1');
+		</script>
+
+	</head>
+	<body>
+
+		<div class="container">
+			<div class="row">
+				<div class="col-12">
+
+					<canvas id="myChart"></canvas>
+
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-sm-4 order-2 order-sm-1">
+
+					<!-- Dataset - Select -->
+					<form id="dataset-select" class="light-bg">
+						<div class="form-group">
+							<label>Dataset:</label>
+							<select id="data-select"></select>
+						</div>
+					</form>
+					<br>
+					<!-- Dataset - Add -->
+					<form id="dataset-add" class="form-light">
+						<div class="form-div">
+							<a data-toggle="collapse" href="#add-collapse">
+								- Create Dataset -
+							</a>
+						</div>
+						<div class="collapse" id="add-collapse">
+							<div class="form-group">
+								<label>Title</label>
+								<input type="text" id="new-title">
+							</div>
+							<button type="submit">Create</button>
+						</div>
+					</form>
+					<!-- Dataset - Delete -->
+					<form id="dataset-delete" class="form-light">
+						<div class="form-div">
+							<a data-toggle="collapse" href="#delete-collapse">
+								- Delete Dataset -
+							</a>
+						</div>
+						<div class="collapse" id="delete-collapse">
+							<div class="form-group">
+								<label>Dataset</label>
+								<select id="data-delete-select"></select>
+							</div>
+							<button type="submit">Delete</button>
+						</div>
+					</form>
+
+				</div>
+				<div class="col-sm-4 order-1 order-sm-2">
+
+					<!-- Data - Add -->
+					<form id="addData">
+						<div class="form-group">
+							<label>New Value:</label>
+							<input type="text" id="balance">
+						</div>
+						<div class="form-group">
+							<label>Date:</label>
+							<input type="date" id="date">
+						</div>
+						<button type="submit">Add</button>
+					</form>
+
+				</div>
+				<div class="col-sm-4 order-3">
+					<!--<form class="form-outline">
+						<div class="form-group">
+							<label>Value:</label>
+						</div>
+						<div class="form-group">
+							<label>Date:</label>
+						</div>
+					</form>-->
+				</div>
+			</div>
+		</div>
+
+	</body>
+
+
+    <!-- JavaScript -->
+    <script src="../js/jquery-3.2.1.min.js"></script>
+    <script src="../js/popper.min.js"></script>
+    <script src="../js/bootstrap.min.js"></script>
+    <script src="../js/Chart.bundle.js"></script>
+
+</html>
+
+<script>
+
+	// Globals
+	var myChart, data = {};
+
+	// Load data
+	if (location.hostname == '') {
+		data["def"] = {
+			//name: "def",
+			labels: ['asdf'],
+			datasets: [{
+				label: 'No Data',
+				data: [2000]
+			}]
+		}
+		data["bankAccount"] = {
+			//name: "bankAccount",
+			labels: ['1/18/18', '1/19/18', '1/20/18', '1/21/18', '1/22/18', '1/23/18', '1/24/18'],
+			datasets: [{
+				label: 'Bank Account',
+				data: [2067.81, 1916.78, 1916.78, 1916.78, 1878.45, 1878.45, 4252.62]
+			}]
+		}
+		data["whoa"] = {
+			//name: "whoa",
+			labels: ['9/25/2017', '9/29/2017', '10/2/2017'],
+			datasets: [{
+				label: 'Whoa',
+				data: [29.8, 28.6, 27.6]
+			}]
+		}
+		initChart();
+		refreshUI();
+	} else {
+		$.getJSON('load.php', {}, function (d) {
+			data = d;
+			initChart();
+			refreshUI();
+		});
+	}
+
+
+
+	// Form - Select Dataset - Change
+	$('#data-select').on('change', function() {
+		var val = $(this).val();
+
+		myChart.data = data[val];
+		myChart.update();
+	});
+
+
+	// Form - Create Dataset - Submit
+	$('#dataset-add').on('submit', function(e) {
+		e.preventDefault();
+
+		var newLabel = $('#new-title').val();
+
+		if (newLabel != '') {
+			var newKey = newLabel.toLowerCase().replace(' ', '_');
+
+			data[newKey] = {};
+			data[newKey].labels = [];
+			data[newKey].datasets = [];
+			data[newKey].datasets[0] = {};
+			data[newKey].datasets[0].label = newLabel;
+			data[newKey].datasets[0].data = [];
+
+			console.log(data);
+
+			refreshUI();
+		}
+	});
+
+	// Form - Delete Dataset - Submit
+	$('#dataset-delete').on('submit', function(e) {
+		
+	});
+
+	// Form - Add Data - Init
+	$('#date').val(new Date().toLocaleDateString());
+
+	// Form - Add Data - Submit
+	$('#addData').on('submit', function(e) {
+		e.preventDefault();
+
+		// Add label, data
+		myChart.data.labels.push($('#date').val());
+		myChart.data.datasets[0].data.push($('#balance').val());
+
+		myChart.update();
+
+		var json = convertData();
+
+		$.post('save.php', { data: json });
+			//$('#balance').val('').focus();
+	});
+
+
+	function initChart() {
+		var ctx = $('#myChart');
+		myChart = new Chart(ctx, {
+		    type: 'line',
+		    data: data["def"],
+		    options: {
+		        scales: {
+		            xAxes: [{
+		                type: 'time',
+	                	distribution: 'linear'
+		            }]
+		        }
+		    }
+		});
+	}
+
+	function refreshUI() {
+
+		refreshDataSelect('#data-select');
+		refreshDataSelect('#data-delete-select');
+	}
+
+	function refreshDataSelect(id) {
+
+		// Form - Select Dataset - Clear
+		$(id).html('');
+
+		// Form - Select Dataset - Init
+		for (var key in data) {
+			$(id).append('<option value="' + key + '">' + data[key].datasets[0].label + '</option>');
+		}
+	}
+
+	// Create data
+	function createData(labelValue = 'cordnog', labelPrint = 'New Dataset') {
+
+		data[newKey] = {};
+		data[newKey].labels = [];
+		data[newKey].datasets = [];
+		data[newKey].datasets[0] = {};
+		data[newKey].datasets[0].label = 'New Dataset';
+		data[newKey].datasets[0].data = [];
+	}
+
+	// Converts global 'data' object to JSON
+	function convertData() {
+		var temp = {};
+
+		for (var key in data) {
+			temp[key] = {};
+
+			temp[key].labels = data[key].labels;
+			temp[key].datasets = [];
+			temp[key].datasets[0] = {};
+			temp[key].datasets[0].label = data[key].datasets[0].label;
+			temp[key].datasets[0].data = data[key].datasets[0].data;
+		}
+		return JSON.stringify(temp);
+	}
+
+</script>
+
